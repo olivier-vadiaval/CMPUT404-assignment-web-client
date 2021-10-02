@@ -21,8 +21,9 @@
 import sys
 import socket
 import re
+import time
 # you may use urllib to encode data appropriately
-import urllib.parse
+from urllib.parse import urlparse, quote, unquote
 
 def help():
     print("httpclient.py [GET/POST] [URL]\n")
@@ -51,9 +52,24 @@ class HTTPClient(object):
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
-        
+                
     def close(self):
         self.socket.close()
+
+    def request_template(self, extra_headers={}):
+        now = time.strftime("%a, %d %b %Y %H:%M:%S %p %Z", time.gmtime())
+
+        request_str = "{method} {path} HTTP/{http_ver}\r\n"
+        request_str += "Host: {host}\r\n"
+        request_str += "Date: {now}\r\n"
+        request_str += "Accept: {accept}\r\n"
+        request_str += "User-Agent: {client_name}\r\n"
+        request_str += "Connection: close\r\n"
+        for header_name, header in extra_headers.items():
+            request_str += f"{header_name}: {header}\r\n"
+
+        request_str += "\r\n"
+        return request_str
 
     # read everything from the socket
     def recvall(self, sock):
@@ -70,6 +86,29 @@ class HTTPClient(object):
     def GET(self, url, args=None):
         code = 500
         body = ""
+        parsed_url = urlparse(url)
+        if args is not None:
+            query_str = ""
+            for key, value in args.items():
+                query_str += f"{quote(key)}={quote(value)}"
+
+            if len(parsed_url.query) == 0:
+                query_str = "?" + query_str
+                    
+        req = self.request_template()
+
+        req.format(
+            method="GET",
+            path=parsed_url.path,
+            http_ver="1.1",
+            host=parsed_url.netloc,
+            accept="*/*",
+            client_name="Mozilla 5.0",
+        )
+
+        # send request
+        # read response and print
+
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
