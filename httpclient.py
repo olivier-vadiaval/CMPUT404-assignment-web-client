@@ -108,6 +108,29 @@ class HTTPClient(object):
                 done = not part
         return buffer.decode('utf-8')
 
+    def get_host_port(self, netloc):
+        host_port = netloc.split(":")
+        host = host_port[0]
+        port = 80
+        if len(host_port) == 2:
+            port = int(host_port[1])
+
+        return host, port
+
+    def send_req(self, req, host, port):
+        self.connect(host, port)
+
+        # send request
+        self.sendall(req)
+
+        # read response and print
+        res = self.recvall(self.socket)
+        code = self.get_code(res)
+        headers = self.get_headers(res)
+        body = self.get_body(res)
+
+        return code, headers, body
+
     def GET(self, url, args=None):
         code = 500
         body = ""
@@ -124,7 +147,7 @@ class HTTPClient(object):
 
         req = req.format(
             method="GET",
-            path=parsed_url.path,
+            path=parsed_url.path + query_str,
             http_ver="1.1",
             host=parsed_url.netloc,
             accept="*/*",
@@ -134,32 +157,49 @@ class HTTPClient(object):
         # DEBUG: Print req
         # print(req)
 
-        host_port = parsed_url.netloc.split(":")
-        host = host_port[0]
-        port = 80
-        if len(host_port) == 2:
-            port = int(host_port[1])
-
-        self.connect(host, port)
-
-        # send request
-        self.sendall(req)
-
-        # read response and print
-        res = self.recvall(self.socket)
-        code = self.get_code(res)
-        headers = self.get_headers(res)
+        host, port = self.get_host_port(parsed_url.netloc)
+        code, headers, body = self.send_req(req, host, port)
         
         # DEBUG: Print response headers
         # print("Response headers:\n\n" + headers)
-
-        body = self.get_body(res)
 
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
         code = 500
         body = ""
+
+        parsed_url = urlparse(url)
+        query_str = parsed_url.query
+        if args is not None:
+            if len(query_str) > 0:
+                query_str += "&"
+            
+            count = 1
+            for key, value in args.items():
+                query_str += f"{key}={quote(value)}"
+                if count < len(args):
+                    query_str += "&"
+                count += 1
+
+        extra_headers = {
+            "Content-Type" : "application/x-www-form-encoded",
+            "Content-Length" : str(len(query_str))
+        }
+        req = self.request_template(extra_headers)
+
+        req = req.format(
+            method="POST",
+            path=parsed_url.path,
+            http_ver="1.1",
+            host=parsed_url.netloc,
+            accept="*/*",
+            client_name="Mozilla 5.0"
+        )
+
+        host, port = self.get_host_port(parsed_url.netloc)
+        code, headers, body = self.send_req(req, host, port)
+
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
