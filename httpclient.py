@@ -33,6 +33,11 @@ class HTTPResponse(object):
         self.code = code
         self.body = body
 
+    def __str__(self):
+        res_str = f"Status Code: {self.code}\r\n"
+        res_str += self.body
+        return res_str
+
 class HTTPClient(object):
 
     #def get_host_port(self,url):
@@ -43,12 +48,10 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-        start_line = data[0]
-        split_start_line = start_line.split()
+        start_line = data.split("\r\n")[0]
         try:
-            code_num = split_start_line[1]
-            code_descr = split_start_line[2]
-            return code_num + " " + code_descr
+            split_start_line = start_line.split()
+            return split_start_line[1]
         except:
             return -1
 
@@ -58,7 +61,7 @@ class HTTPClient(object):
             for line in data.split("\r\n"):
                 if len(line) == 0:
                     return headers
-                headers += line
+                headers += line + "\r\n"
         except:
             return -1
 
@@ -119,21 +122,23 @@ class HTTPClient(object):
                     
         req = self.request_template()
 
-        req.format(
+        req = req.format(
             method="GET",
             path=parsed_url.path,
             http_ver="1.1",
             host=parsed_url.netloc,
             accept="*/*",
-            client_name="Mozilla 5.0",
+            client_name="Mozilla 5.0"
         )
 
+        # DEBUG: Print req
+        # print(req)
+
         host_port = parsed_url.netloc.split(":")
-        if len(host_port) == 1:
-            host = host_port[0]
-            port = 80
-        else:
-            host, port = host_port
+        host = host_port[0]
+        port = 80
+        if len(host_port) == 2:
+            port = int(host_port[1])
 
         self.connect(host, port)
 
@@ -144,7 +149,9 @@ class HTTPClient(object):
         res = self.recvall(self.socket)
         code = self.get_code(res)
         headers = self.get_headers(res)
-        print("Response headers:\n", headers)
+        
+        # DEBUG: Print response headers
+        # print("Response headers:\n\n" + headers)
 
         body = self.get_body(res)
 
