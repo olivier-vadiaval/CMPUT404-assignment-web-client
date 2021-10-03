@@ -51,7 +51,7 @@ class HTTPClient(object):
         start_line = data.split("\r\n")[0]
         try:
             split_start_line = start_line.split()
-            return split_start_line[1]
+            return int(split_start_line[1])
         except:
             return -1
 
@@ -94,6 +94,7 @@ class HTTPClient(object):
             request_str += f"{header_name}: {header}\r\n"
 
         request_str += "\r\n"
+        request_str += "{body}"
         return request_str
 
     # read everything from the socket
@@ -107,6 +108,12 @@ class HTTPClient(object):
             else:
                 done = not part
         return buffer.decode('utf-8')
+
+    def get_path(self, parsed_url_path):
+        if parsed_url_path == "":
+            return "/"
+        else:
+            return parsed_url_path
 
     def get_host_port(self, netloc):
         host_port = netloc.split(":")
@@ -135,8 +142,8 @@ class HTTPClient(object):
         code = 500
         body = ""
         parsed_url = urlparse(url)
+        query_str = ""
         if args is not None:
-            query_str = ""
             for key, value in args.items():
                 query_str += f"{quote(key)}={quote(value)}"
 
@@ -147,11 +154,12 @@ class HTTPClient(object):
 
         req = req.format(
             method="GET",
-            path=parsed_url.path + query_str,
+            path=self.get_path(parsed_url.path) + query_str,
             http_ver="1.1",
             host=parsed_url.netloc,
             accept="*/*",
-            client_name="Mozilla 5.0"
+            client_name="Mozilla 5.0",
+            body=""
         )
 
         # DEBUG: Print req
@@ -184,17 +192,18 @@ class HTTPClient(object):
 
         extra_headers = {
             "Content-Type" : "application/x-www-form-encoded",
-            "Content-Length" : str(len(query_str))
+            "Content-Length" : len(query_str)
         }
         req = self.request_template(extra_headers)
 
         req = req.format(
             method="POST",
-            path=parsed_url.path,
+            path=self.get_path(parsed_url.path),
             http_ver="1.1",
             host=parsed_url.netloc,
             accept="*/*",
-            client_name="Mozilla 5.0"
+            client_name="Mozilla 5.0",
+            body=query_str
         )
 
         host, port = self.get_host_port(parsed_url.netloc)
