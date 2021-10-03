@@ -61,7 +61,7 @@ class HTTPClient(object):
 
         request_str = "{method} {path} HTTP/{http_ver}\r\n"
         request_str += "Host: {host}\r\n"
-        request_str += "Date: {now}\r\n"
+        request_str += f"Date: {now}\r\n"
         request_str += "Accept: {accept}\r\n"
         request_str += "User-Agent: {client_name}\r\n"
         request_str += "Connection: close\r\n"
