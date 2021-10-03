@@ -34,6 +34,7 @@ class HTTPResponse(object):
         self.body = body
 
 class HTTPClient(object):
+
     #def get_host_port(self,url):
 
     def connect(self, host, port):
@@ -42,13 +43,34 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-        return None
+        start_line = data[0]
+        split_start_line = start_line.split()
+        try:
+            code_num = split_start_line[1]
+            code_descr = split_start_line[2]
+            return code_num + " " + code_descr
+        except:
+            return -1
 
     def get_headers(self,data):
-        return None
+        headers = ""
+        try:
+            for line in data.split("\r\n"):
+                if len(line) == 0:
+                    return headers
+                headers += line
+        except:
+            return -1
 
     def get_body(self, data):
-        return None
+        try:
+            splitted_data = data.split("\r\n")
+        except:
+            return -1
+
+        for i in range(len(splitted_data)):
+            if len(splitted_data[i]) == 0:
+                return "\r\n".join(splitted_data[i+1:])
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
@@ -106,8 +128,25 @@ class HTTPClient(object):
             client_name="Mozilla 5.0",
         )
 
+        host_port = parsed_url.netloc.split(":")
+        if len(host_port) == 1:
+            host = host_port[0]
+            port = 80
+        else:
+            host, port = host_port
+
+        self.connect(host, port)
+
         # send request
+        self.sendall(req)
+
         # read response and print
+        res = self.recvall(self.socket)
+        code = self.get_code(res)
+        headers = self.get_headers(res)
+        print("Response headers:\n", headers)
+
+        body = self.get_body(res)
 
         return HTTPResponse(code, body)
 
