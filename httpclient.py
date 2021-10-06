@@ -65,15 +65,24 @@ class HTTPClient(object):
         except:
             return -1
 
+        return -1
+
     def get_body(self, data):
         try:
+            content_len = None
             splitted_data = data.split("\r\n")
+            for i in range(1, len(splitted_data)):
+                if len(splitted_data[i]) == 0:
+                    if content_len is not None:
+                        return "\r\n".join(splitted_data[i+1:content_len])
+                    else:
+                        return "\r\n".join(splitted_data[i+1:])
+                else:
+                    header, header_value = splitted_data[i].split(": ")
+                    if header == "Content-Length":
+                        content_len = int(header_value)
         except:
             return -1
-
-        for i in range(len(splitted_data)):
-            if len(splitted_data[i]) == 0:
-                return "\r\n".join(splitted_data[i+1:])
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
